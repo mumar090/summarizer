@@ -1,0 +1,65 @@
+openapi: 3.0.3
+info:
+  title: Summarizer API
+  version: 1.0.0
+  description: API to summarize documents from URLs using Ollama.
+servers:
+  - url: http://localhost:8000
+
+paths:
+  /documents/:
+    post:
+      summary: Submit a new document for summarization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                url:
+                  type: string
+      responses:
+        "202":
+          description: Document accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+
+  /documents/{document_uuid}/:
+    get:
+      summary: Retrieve a document status and summary
+      parameters:
+        - name: document_uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Document object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+
+components:
+  schemas:
+    Document:
+      type: object
+      properties:
+        document_uuid:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, SUCCESS, FAILED]
+        name:
+          type: string
+        url:
+          type: string
+        summary:
+          type: string
+          nullable: true

@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "summarizer_api"
+version = "0.1.0"
+description = "Summarizer API using FastAPI, Celery, and Ollama"
+authors = ["mumar090 <contact.mumar.de@gmail.com>"]
+readme = "README.md"
+packages = [
+    { include = "app" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.1"
+pydantic = "^2.11.3"
+pydantic-settings = "^2.1.0"
+sqlalchemy = "^2.0.43"
+celery = {extras = ["redis"], version = "^5.5.3"}
+requests = "^2.32.5"
+bs4 = "^0.0.2"
+uvicorn = "^0.35.0"
+readability-lxml = "^0.8.4.1"
+aiosqlite = "^0.21.0"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
