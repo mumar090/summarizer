@@ -9,12 +9,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install Poetry
-        run: pipx install poetry==2.1.2
+        run: python -m pip install "poetry==2.1.2"
       - name: Install dependencies
         run: poetry install --no-interaction
       - name: Lint
@@ -25,7 +25,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Validate compose file
         run: docker compose config --quiet
       - name: Build image
