@@ -1,44 +1,84 @@
-version: "3.9"
+x-app-env: &app-env
+  ENV: docker
+  DATABASE_URL: postgresql+psycopg://summarizer:summarizer@postgres:5432/summarizer
+  CELERY_BROKER_URL: redis://redis:6379/0
+  OLLAMA_BASE_URL: http://ollama:11434
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3:1b}
 
 services:
   api:
     build: .
-    container_name: summarizer_api
+    image: summarizer-app
     ports:
       - "8000:8000"
+    environment: *app-env
     depends_on:
-      - redis
-      - ollama
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-    volumes:
-      - .:/app
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   worker:
-    build: .
-    container_name: summarizer_worker
-    command: celery -A worker.app worker --loglevel=info
+    image: summarizer-app
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=${WORKER_CONCURRENCY:-2}
+    environment: *app-env
     depends_on:
-      - redis
-      - ollama
+      api:
+        condition: service_healthy # the API creates the schema on startup
+      redis:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
+
+  postgres:
+    image: postgres:16-alpine
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      POSTGRES_USER: summarizer
+      POSTGRES_PASSWORD: summarizer
+      POSTGRES_DB: summarizer
     volumes:
-      - .:/app
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U summarizer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
-    image: redis:7
-    container_name: summarizer_redis
-    ports:
-      - "6379:6379"
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   ollama:
     image: ollama/ollama:latest
-    container_name: summarizer_ollama
-    ports:
-      - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # One-shot job: downloads the model into the shared volume before workers start.
+  ollama-pull:
+    image: ollama/ollama:latest
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-gemma3:1b}"]
+    environment:
+      OLLAMA_HOST: ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
 
 volumes:
+  pg_data:
   ollama_data:

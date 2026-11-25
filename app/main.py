@@ -1,21 +1,45 @@
-from fastapi import FastAPI
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException
+from sqlalchemy import text
+
 from app.controllers import document_controller
 from app.core.config import settings
+from app.db.session import async_engine, init_db
+
+logging.basicConfig(level=settings.LOG_LEVEL, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+    await async_engine.dispose()
+
 
 app = FastAPI(
-    title="Summarizer API",
-    description="Summarizes documents/web pages using Ollama and Celery",
-    version="0.1.0",
+    title=settings.APP_NAME,
+    description="Summarizes web pages asynchronously using a local Ollama LLM and Celery workers.",
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
-# Register routers
 app.include_router(document_controller.router, prefix="/api", tags=["documents"])
 
-# Health check / root endpoints
-@app.get("/", tags=["health"])
-def root():
-    return {"status": "ok", "message": "Summarizer API is running"}
 
 @app.get("/health", tags=["health"])
-def health_check():
-    return {"status": "healthy", "environment": settings.ENV}
+async def health():
+    """Liveness: the process is up."""
+    return {"status": "ok", "environment": settings.ENV}
+
+
+@app.get("/ready", tags=["health"])
+async def ready():
+    """Readiness: the database is reachable."""
+    try:
+        async with async_engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database unavailable") from exc
+    return {"status": "ready"}

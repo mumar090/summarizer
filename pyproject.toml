@@ -1,26 +1,41 @@
 [tool.poetry]
 name = "summarizer_api"
-version = "0.1.0"
-description = "Summarizer API using FastAPI, Celery, and Ollama"
+version = "1.0.0"
+description = "Async web-page summarization API using FastAPI, Celery and a local Ollama LLM"
 authors = ["mumar090 <contact.mumar.de@gmail.com>"]
 readme = "README.md"
-packages = [
-    { include = "app" }
-]
+packages = [{ include = "app" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
 fastapi = "^0.115.1"
+uvicorn = { extras = ["standard"], version = "^0.35.0" }
 pydantic = "^2.11.3"
 pydantic-settings = "^2.1.0"
 sqlalchemy = "^2.0.43"
-celery = {extras = ["redis"], version = "^5.5.3"}
-requests = "^2.32.5"
-bs4 = "^0.0.2"
-uvicorn = "^0.35.0"
-readability-lxml = "^0.8.4.1"
 aiosqlite = "^0.21.0"
+psycopg = { extras = ["binary"], version = "^3.2" }
+celery = { extras = ["redis"], version = "^5.5.3" }
+requests = "^2.32.5"
+beautifulsoup4 = "^4.12"
+lxml = "^5.3"
+readability-lxml = "^0.8.4.1"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+httpx = "^0.28"
+ruff = "^0.8"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

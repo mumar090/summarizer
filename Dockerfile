@@ -1,17 +1,23 @@
-FROM Python:3.12-slim
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    POETRY_VIRTUALENVS_CREATE=false
 
 WORKDIR /app
 
-# install Poetry
-RUN apt-get update && apt-get install -y curl build-essential && rm -rf /var/lib/apt/lists/*
-RUN curl -sSL https://install.python-poetry.org | python3 - && \
-    ln -s /root/.local/bin/poetry /usr/local/bin/poetry
+RUN pip install "poetry==2.1.2"
 
-COPY pyproject.toml poetry.lock* /app/
+# Install dependencies first so this layer is cached across code changes.
+COPY pyproject.toml poetry.lock ./
+RUN poetry install --only main --no-root --no-interaction --no-ansi
 
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi
+COPY app ./app
 
-COPY . /app
+RUN useradd --create-home --uid 1000 appuser \
+    && mkdir -p /app/data && chown appuser /app/data
+USER appuser
 
+EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
